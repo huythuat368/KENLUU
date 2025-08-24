@@ -1,0 +1,44 @@
+cat > docker-compose.yml <<'YML'
+version: '3.9'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cryptobot
+    volumes: [dbdata:/var/lib/postgresql/data]
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  api:
+    image: kenluu3168/crypto-bot-api:latest
+    env_file: .env.live
+    depends_on: [db, redis]
+    ports: ["8080:8080"]
+
+  worker:
+    image: kenluu3168/crypto-bot-worker:latest
+    env_file: .env.live
+    depends_on: [api, db, redis]
+
+  web:
+    image: kenluu3168/crypto-bot-web:latest
+    env_file: .env.live
+    depends_on: [api]
+    ports: ["3000:3000"]
+
+  # Migrator chạy one-off trước khi up -d
+  migrator:
+    image: kenluu3168/crypto-bot-migrator:latest
+    env_file: .env.live
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on: [db]
+    profiles: ["migrate"]
+
+volumes:
+  dbdata:
+YML
